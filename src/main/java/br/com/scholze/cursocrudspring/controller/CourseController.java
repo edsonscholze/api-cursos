@@ -1,66 +1,66 @@
 package br.com.scholze.cursocrudspring.controller;
 
-import br.com.scholze.cursocrudspring.infra.CourseRepository;
-import br.com.scholze.cursocrudspring.model.Course;
 import br.com.scholze.cursocrudspring.model.DataListCourses;
 import br.com.scholze.cursocrudspring.model.DataRegistrationCourse;
+import br.com.scholze.cursocrudspring.service.CourseService;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Validated
 @RestController
 @RequestMapping("/api/courses")
 public class CourseController {
 
     @Autowired
-    CourseRepository courseRepository;
+    CourseService courseService;
     @GetMapping
     public ResponseEntity<List<DataListCourses>> listar(){
-        var courses = courseRepository.findAll().stream().map(DataListCourses::new).toList();
+        var courses = courseService.listar();
         return ResponseEntity.ok(courses);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<DataRegistrationCourse> obterPorId(@PathVariable @NotNull @Positive Long id){
         //return courseRepository.findById(id).map(record -> ResponseEntity.ok().body(new DataRegistrationCourse(record.getName(), record.getCategory()))).orElse(ResponseEntity.notFound().build());
-
-        var course = courseRepository.getReferenceById(id);
-        return ResponseEntity.ok(new DataRegistrationCourse(course.getId(), course.getName(), course.getCategory()));
+        var course = courseService.obterPorId(id);
+        return ResponseEntity.ok(course);
     }
     @PostMapping
-    @Transactional
     public ResponseEntity salvar(@Valid @RequestBody DataRegistrationCourse data){
-        var course = new Course(data);
-        courseRepository.save(course);
+        if(!courseService.salvar(data)){
+            return ResponseEntity.badRequest().build();
+        }
         return ResponseEntity.ok().build();
     }
 
     @PutMapping
-    @Transactional
-    public ResponseEntity atualizar(@Valid @RequestBody DataRegistrationCourse courseAtualizado){
-        var course = courseRepository.getReferenceById(courseAtualizado._id());
-        course.setCategory(courseAtualizado.category());
-        course.setName(courseAtualizado.name());
-        return ResponseEntity.ok(courseAtualizado);
+    public ResponseEntity atualizar(@Valid @RequestBody DataRegistrationCourse courseUpdated){
+        var course = courseService.atualizar(courseUpdated);
+        return ResponseEntity.ok(course);
     }
     @DeleteMapping("/{id}")
     @Transactional
     public ResponseEntity excluirLogica(@PathVariable @NotNull @Positive Long id){
-        courseRepository.deleteById(id);
+        if(!courseService.exclusaoLogica(id)){
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("excluir/{id}")
     @Transactional
-    public ResponseEntity excluir(@PathVariable @NotNull @Positive Long id){
-        var course = courseRepository.getReferenceById(id);
-        courseRepository.delete(course);
+    public ResponseEntity<Void> excluir(@PathVariable @NotNull @Positive Long id){
+        if(!courseService.excluir(id)){
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.noContent().build();
     }
 
